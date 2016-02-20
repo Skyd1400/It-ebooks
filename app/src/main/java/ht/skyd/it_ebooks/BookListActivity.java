@@ -2,6 +2,7 @@ package ht.skyd.it_ebooks;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -17,7 +18,11 @@ import android.widget.TextView;
 
 
 import ht.skyd.it_ebooks.dummy.DummyContent;
+import retrofit2.Call;
+import retrofit2.http.GET;
+import retrofit2.http.Path;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -29,6 +34,14 @@ import java.util.List;
  * item details side-by-side using two vertical panes.
  */
 public class BookListActivity extends AppCompatActivity {
+
+    private interface BookListClient {
+        @GET("/search/{query}/page/{page_num}")
+        Call<BookList> books(
+                @Path("query") String query,
+                @Path("page_num") String page_num
+        );
+    }
 
     /**
      * Whether or not the activity is in two-pane mode, i.e. running on a tablet
@@ -65,6 +78,8 @@ public class BookListActivity extends AppCompatActivity {
             // activity should be in two-pane mode.
             mTwoPane = true;
         }
+
+
     }
 
     private void setupRecyclerView(@NonNull RecyclerView recyclerView) {
@@ -138,5 +153,36 @@ public class BookListActivity extends AppCompatActivity {
                 return super.toString() + " '" + mContentView.getText() + "'";
             }
         }
+    }
+
+    private static class BookListTask extends AsyncTask<String, Void, BookList> {
+        BookListClient mClient;
+
+        @Override
+        protected void onPreExecute(){
+            mClient = ServiceGenerator.createService(BookListClient.class);
+        }
+
+        @Override
+        protected BookList doInBackground(String... params) {
+            String query = params[0];
+            String page = params[1] != null ? params[1] : "";
+            Call<BookList> call = mClient.books(query, page);
+
+            try {
+                return call.execute().body();
+            } catch (IOException e) {
+
+            }
+            return null;
+        }
+
+        @Override
+        protected  void onPostExecute(BookList result) {
+            if (result != null) {
+
+            }
+        }
+
     }
 }
