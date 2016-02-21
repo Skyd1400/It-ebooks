@@ -24,7 +24,7 @@ public class ServiceGenerator {
                     .addConverterFactory(GsonConverterFactory.create());
 
     public static <S> S createService(Class<S> serviceClass) {
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
         httpClient.addInterceptor(logging);
         Retrofit retrofit = builder.client(httpClient.build()).build();
         return retrofit.create(serviceClass);

@@ -10,4 +10,5 @@
     android:layout_marginRight="16dp"
     app:layoutManager="LinearLayoutManager"
     tools:context="ht.skyd.it_ebooks.BookListActivity"
-    tools:listitem="@layout/book_list_content" />
+    tools:listitem="@layout/book_list_content"
+    android:paddingTop="8dp" />

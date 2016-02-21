@@ -4,14 +4,12 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,18 +17,18 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-
 import com.google.gson.Gson;
 import com.squareup.picasso.Picasso;
+
+import org.w3c.dom.Text;
+
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * An activity representing a list of Books. This activity
@@ -141,9 +139,11 @@ public class BookListActivity extends AppCompatActivity {
         public void onBindViewHolder(final ViewHolder holder, int position) {
             holder.mBook = mBooks.get(position);
             Picasso.with(holder.mCoverView.getContext())
-                    .load(Uri.parse(mBooks.get(position)
-                            .getImage())).into(holder.mCoverView);
-            holder.mTitleView.setText(mBooks.get(position).getTitle());
+                    .load(Uri.parse(holder.mBook.getImage()))
+                            .into(holder.mCoverView);
+            holder.mTitleView.setText(holder.mBook.getTitle());
+            holder.mDescriptionView.setText(
+                    (holder.mBook.getDescription() != null) ? holder.mBook.getDescription() : "");
 
             holder.mView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -176,6 +176,7 @@ public class BookListActivity extends AppCompatActivity {
             public final View mView;
             public final ImageView mCoverView;
             public final TextView mTitleView;
+            public final TextView mDescriptionView;
             public Book mBook;
 
             public ViewHolder(View view) {
@@ -183,6 +184,7 @@ public class BookListActivity extends AppCompatActivity {
                 mView = view;
                 mCoverView = (ImageView) view.findViewById(R.id.list_cover_view);
                 mTitleView = (TextView) view.findViewById(R.id.book_title);
+                mDescriptionView = (TextView) view.findViewById(R.id.book_description);
             }
 
             @Override
