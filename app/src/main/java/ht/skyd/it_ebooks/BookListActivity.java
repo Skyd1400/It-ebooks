@@ -1,24 +1,31 @@
 package ht.skyd.it_ebooks;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 
-import ht.skyd.it_ebooks.dummy.DummyContent;
+import com.google.gson.Gson;
+import com.squareup.picasso.Picasso;
+
 import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
 
@@ -36,10 +43,10 @@ import java.util.List;
 public class BookListActivity extends AppCompatActivity {
 
     private interface BookListClient {
-        @GET("/search/{query}/page/{page_num}")
+        @GET("search/{query}")
         Call<BookList> books(
-                @Path("query") String query,
-                @Path("page_num") String page_num
+                @Path("query") String query
+                //@Path("page_num") String page_num
         );
     }
 
@@ -48,6 +55,9 @@ public class BookListActivity extends AppCompatActivity {
      * device.
      */
     private boolean mTwoPane;
+    private  RecyclerView mRecyclerView;
+    private BookItemRecyclerViewAdapter adapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,9 +77,37 @@ public class BookListActivity extends AppCompatActivity {
             }
         });
 
-        View recyclerView = findViewById(R.id.book_list);
-        assert recyclerView != null;
-        setupRecyclerView((RecyclerView) recyclerView);
+        final ProgressDialog dialog = ProgressDialog.show(this, "", "loading...");
+
+        mRecyclerView = (RecyclerView) findViewById(R.id.book_list);
+        assert mRecyclerView != null;
+        BookListClient mClient = ServiceGenerator.createService(BookListClient.class);
+        Call<BookList> call = mClient.books("php mysql");
+        call.enqueue(new Callback<BookList>() {
+            @Override
+            public void onResponse(Call<BookList> call, Response<BookList> response) {
+                dialog.dismiss();
+                Log.d("MainActivity", "Status Code = " + response.code());
+                if (response.isSuccess()) {
+                    // request successful (status code 200, 201)
+                    BookList result = response.body();
+                    Log.d("MainActivity", "response = " + new Gson().toJson(result));
+                    List<Book> books = result.getBooks();
+                    Log.d("MainActivity", "Books = " + books.size());
+                    adapter = new BookItemRecyclerViewAdapter(books);
+                    mRecyclerView.setAdapter(adapter);
+                } else {
+                    // response received but request not successful (like 400,401,403 etc)
+                    //Handle errors
+
+                }
+            }
+
+            @Override
+            public void onFailure(Call<BookList> call, Throwable t) {
+                t.printStackTrace();
+            }
+        });
 
         if (findViewById(R.id.book_detail_container) != null) {
             // The detail container view will be present only in the
@@ -82,17 +120,14 @@ public class BookListActivity extends AppCompatActivity {
 
     }
 
-    private void setupRecyclerView(@NonNull RecyclerView recyclerView) {
-        recyclerView.setAdapter(new SimpleItemRecyclerViewAdapter(DummyContent.ITEMS));
-    }
 
-    public class SimpleItemRecyclerViewAdapter
-            extends RecyclerView.Adapter<SimpleItemRecyclerViewAdapter.ViewHolder> {
+    public class BookItemRecyclerViewAdapter
+            extends RecyclerView.Adapter<BookItemRecyclerViewAdapter.ViewHolder> {
 
-        private final List<DummyContent.DummyItem> mValues;
+        private final List<Book> mBooks;
 
-        public SimpleItemRecyclerViewAdapter(List<DummyContent.DummyItem> items) {
-            mValues = items;
+        public BookItemRecyclerViewAdapter(List<Book> books) {
+            mBooks = books;
         }
 
         @Override
@@ -104,16 +139,18 @@ public class BookListActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(final ViewHolder holder, int position) {
-            holder.mItem = mValues.get(position);
-            holder.mIdView.setText(mValues.get(position).id);
-            holder.mContentView.setText(mValues.get(position).content);
+            holder.mBook = mBooks.get(position);
+            Picasso.with(holder.mCoverView.getContext())
+                    .load(Uri.parse(mBooks.get(position)
+                            .getImage())).into(holder.mCoverView);
+            holder.mTitleView.setText(mBooks.get(position).getTitle());
 
             holder.mView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (mTwoPane) {
                         Bundle arguments = new Bundle();
-                        arguments.putString(BookDetailFragment.ARG_ITEM_ID, holder.mItem.id);
+                        arguments.putLong(BookDetailFragment.ARG_ITEM_ID, holder.mBook.getID());
                         BookDetailFragment fragment = new BookDetailFragment();
                         fragment.setArguments(arguments);
                         getSupportFragmentManager().beginTransaction()
@@ -122,7 +159,7 @@ public class BookListActivity extends AppCompatActivity {
                     } else {
                         Context context = v.getContext();
                         Intent intent = new Intent(context, BookDetailActivity.class);
-                        intent.putExtra(BookDetailFragment.ARG_ITEM_ID, holder.mItem.id);
+                        intent.putExtra(BookDetailFragment.ARG_ITEM_ID, holder.mBook.getID());
 
                         context.startActivity(intent);
                     }
@@ -132,57 +169,60 @@ public class BookListActivity extends AppCompatActivity {
 
         @Override
         public int getItemCount() {
-            return mValues.size();
+            return mBooks.size();
         }
 
         public class ViewHolder extends RecyclerView.ViewHolder {
             public final View mView;
-            public final TextView mIdView;
-            public final TextView mContentView;
-            public DummyContent.DummyItem mItem;
+            public final ImageView mCoverView;
+            public final TextView mTitleView;
+            public Book mBook;
 
             public ViewHolder(View view) {
                 super(view);
                 mView = view;
-                mIdView = (TextView) view.findViewById(R.id.id);
-                mContentView = (TextView) view.findViewById(R.id.content);
+                mCoverView = (ImageView) view.findViewById(R.id.list_cover_view);
+                mTitleView = (TextView) view.findViewById(R.id.book_title);
             }
 
             @Override
             public String toString() {
-                return super.toString() + " '" + mContentView.getText() + "'";
+                return super.toString() + " '" + mTitleView.getText() + "'";
             }
         }
     }
 
-    private static class BookListTask extends AsyncTask<String, Void, BookList> {
-        BookListClient mClient;
-
-        @Override
-        protected void onPreExecute(){
-            mClient = ServiceGenerator.createService(BookListClient.class);
-        }
-
-        @Override
-        protected BookList doInBackground(String... params) {
-            String query = params[0];
-            String page = params[1] != null ? params[1] : "";
-            Call<BookList> call = mClient.books(query, page);
-
-            try {
-                return call.execute().body();
-            } catch (IOException e) {
-
-            }
-            return null;
-        }
-
-        @Override
-        protected  void onPostExecute(BookList result) {
-            if (result != null) {
-
-            }
-        }
-
-    }
+//    public class BookListTask extends AsyncTask<String, Void, BookList> {
+//        BookListClient mClient;
+//
+//        @Override
+//        protected void onPreExecute(){
+//            mClient = ServiceGenerator.createService(BookListClient.class);
+//        }
+//
+//        @Override
+//        protected BookList doInBackground(String... params) {
+//            String query = params[0];
+//            String page = params[1] != null ? params[1] : "";
+//            Call<BookList> call = mClient.books();
+//
+//            try {
+//                return call.execute().body();
+//            } catch (IOException e) {
+//                Log.e("Hash", "Response is null");
+//            }
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(BookList result) {
+//            if (result != null) {
+//                mRecyclerView.setAdapter(new BookItemRecyclerViewAdapter(result.getBooks()));
+//            }
+//            else {
+//
+//            }
+//        }
+//
+//    }
 }
