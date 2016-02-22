@@ -20,8 +20,6 @@ import android.widget.TextView;
 import com.google.gson.Gson;
 import com.squareup.picasso.Picasso;
 
-import org.w3c.dom.Text;
-
 import java.util.List;
 
 import retrofit2.Call;
@@ -87,6 +85,7 @@ public class BookListActivity extends AppCompatActivity {
                 dialog.dismiss();
                 Log.d("MainActivity", "Status Code = " + response.code());
                 if (response.isSuccess()) {
+                    // TODO, error catching
                     // request successful (status code 200, 201)
                     BookList result = response.body();
                     Log.d("MainActivity", "response = " + new Gson().toJson(result));
@@ -150,7 +149,7 @@ public class BookListActivity extends AppCompatActivity {
                 public void onClick(View v) {
                     if (mTwoPane) {
                         Bundle arguments = new Bundle();
-                        arguments.putLong(BookDetailFragment.ARG_ITEM_ID, holder.mBook.getID());
+                        arguments.putLong("book_id", holder.mBook.getID());
                         BookDetailFragment fragment = new BookDetailFragment();
                         fragment.setArguments(arguments);
                         getSupportFragmentManager().beginTransaction()
@@ -159,7 +158,7 @@ public class BookListActivity extends AppCompatActivity {
                     } else {
                         Context context = v.getContext();
                         Intent intent = new Intent(context, BookDetailActivity.class);
-                        intent.putExtra(BookDetailFragment.ARG_ITEM_ID, holder.mBook.getID());
+                        intent.putExtra("book_id", holder.mBook.getID());
 
                         context.startActivity(intent);
                     }

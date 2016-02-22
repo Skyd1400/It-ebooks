@@ -1,15 +1,23 @@
 package ht.skyd.it_ebooks;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import ht.skyd.it_ebooks.dummy.DummyContent;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.Path;
 
 /**
  * A fragment representing a single Book detail screen.
@@ -22,12 +30,29 @@ public class BookDetailFragment extends Fragment {
      * The fragment argument representing the item ID that this fragment
      * represents.
      */
-    public static final String ARG_ITEM_ID = "item_id";
+    public static final Long ARG_BOOK_ID = Long.valueOf(0);
 
     /**
-     * The dummy content this fragment is presenting.
+     * The mBook variable this fragment is presenting.
      */
-    private DummyContent.DummyItem mItem;
+    private Book mBook;
+
+    private Call<Book> mCall;
+
+
+    private ProgressDialog mDialog;
+
+    /**
+     * Interface describing the client to get the book data
+     */
+    private interface BookDetailClient {
+        @GET("book/{id}")
+        Call<Book> book(
+                // will be the book isbn
+                @Path("id") Long book_id
+        );
+    }
+
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -40,17 +65,14 @@ public class BookDetailFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (getArguments().containsKey(ARG_ITEM_ID)) {
-            // Load the dummy content specified by the fragment
-            // arguments. In a real-world scenario, use a Loader
-            // to load content from a content provider.
-            mItem = DummyContent.ITEM_MAP.get(getArguments().getString(ARG_ITEM_ID));
-
+        if (getArguments().containsKey("book_id")) {
+            mDialog.show(getContext(), "", "loading...");
             Activity activity = this.getActivity();
-            CollapsingToolbarLayout appBarLayout = (CollapsingToolbarLayout) activity.findViewById(R.id.toolbar_layout);
-            if (appBarLayout != null) {
-                appBarLayout.setTitle(mItem.content);
-            }
+            // Create the service
+            BookDetailClient mClient = ServiceGenerator.createService(BookDetailClient.class);
+            // get the call object to retrieve the book data
+            mCall = mClient.book(getArguments().getLong("book_id"));
+            // add the callback;
         }
     }
 
@@ -59,10 +81,32 @@ public class BookDetailFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.book_detail, container, false);
 
-        // Show the dummy content as text in a TextView.
-        if (mItem != null) {
-            ((TextView) rootView.findViewById(R.id.book_detail)).setText(mItem.details);
-        }
+        final Activity activity = this.getActivity();
+        mCall.enqueue(new Callback<Book>() {
+            @Override
+            public void onResponse(Call<Book> call, Response<Book> response) {
+                mDialog.dismiss();
+                Log.d("MainActivity", "Status Code = " + response.code());
+                if (response.isSuccess()) {
+                    // request successful (status code 200, 201)
+                    mBook = response.body();
+
+                    CollapsingToolbarLayout appBarLayout = (CollapsingToolbarLayout) activity.findViewById(R.id.toolbar_layout);
+                    if (appBarLayout != null) {
+                        appBarLayout.setTitle(mBook.getTitle());
+                    }
+
+                }
+                else {
+
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Book> call, Throwable t) {
+
+            }
+        });
 
         return rootView;
     }
